@@ -1,20 +1,244 @@
-# Reproducible Research: Peer Assessment 1
+Reproducible Research
+----------------------
+
+The [Reproducible Research](https://class.coursera.org/repdata-004) course is part
+of the [Data Science Specialization](https://www.coursera.org/specialization/jhudatascience/1?utm_medium=listingPage) offered by John Hopkins University on Coursera.
+
+### Peer Assessment 1
+
+In this file, I document my code and its output in order to answer the questions associated with [Peer Assessment 1](https://class.coursera.org/repdata-004/human_grading/view/courses/972143/assessments/3/submissions).
+
+***
+#### Loading and preprocessing the data
+
+The data for this assignment can be downloaded from the Peer Assessment link above.  For completeness, I include the link to the data set here:  [Activity monitoring data [52K]](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip).
+
+The data was sourced from a personal activity monitoring device. The device collected data at 5 minute intervals through out the day. The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012.  The data includes the number of steps taken in 5 minute intervals each day.
+
+The variables included in this dataset are:
+
+```
+Variable | Description
+---------|-------------------------------------------------------------------------------
+steps    | number of steps taking in a 5-minute interval (missing values are coded as NA)
+         |
+date     | the date on which the measurement was taken in YYYY-MM-DD format
+         |
+interval | identifier for the 5-minute interval in which measurement was taken
+```
+
+The dataset is stored in a comma-separated-value (CSV) file and there are a total of 17,568 observations in this dataset.
+
+***
+### My Analysis
+
+For my analysis, data.table is a required package.  The data is unzipped and stored in a local directory.  It is read from the directory and stored in a data table called "activity".
+
+```{r Getting Data}
+require(data.table)
+setwd("~/Documents/Coursera/5_Reproducible Research")
+activity <- fread("activity.csv", header = TRUE, stringsAsFactors = FALSE)
+```
+
+I will clean up the "activity" data table to suit my needs by re-ordering the columns, re-classing the date data to date format and reclassing the steps data to numeric format.  Finally, I key the data table by date and interval.
+
+```{r Cleaning Data}
+setcolorder(activity, c("date", "interval", "steps"))
+activity$date <- activity[, as.Date(date)]
+activity$steps <- activity[, as.numeric(steps)]
+setkey(activity, date, interval)
+```
+
+After cleaning, the "activity" data table looks like this...
+
+```{r Sample Data}
+str(activity)
+head(activity)
+tail(activity)
+```
+
+***
+#### Question Set 1: What is the mean total number of steps taken per day?
+1. Make a histogram of the total number of steps taken each day
+2. Calculate and report the mean and median total number of steps taken per day.
+
+To address these questions, I first create a data table called "steps_per_day" from the "activity" data table.  The data table will have two columns: the date and the sum of the steps data for each day.
+
+```{r First Question Set Prep}
+steps_per_day <- activity[, sum(steps, na.rm = TRUE), by = date]
+setnames(steps_per_day, c("date", "steps"))
+setkey(steps_per_day, date)
+str(steps_per_day)
+head(steps_per_day)
+```
+
+Next, I call the hist() function in data table format to create a histogram of the data.  Note I increase the granularity of the histogram by setting breaks equal to 10, which is twice the default break count.
 
 
-## Loading and preprocessing the data
+```{r First Question Set_1}
+steps_per_day[, hist(steps, breaks = 10, freq = TRUE,
+                     xlab="Steps per Day", main="Histogram of Steps per Day (Raw)", 
+                     col="lightblue", xlim = c(0, 25000))]
+```
 
+Last, I call the mean() and median() functions on the "steps_per_day" data table to calculate the mean and median total steps per day.
 
+```{r First Question Set_2}
+mean_steps <- steps_per_day[, round(mean(steps, 0))]
+median_steps <- steps_per_day[, round(median(steps, 0))]
+```
 
-## What is mean total number of steps taken per day?
+**The mean total steps per day is: `r as.integer(mean_steps)` steps.  The median total steps per day is: `r as.integer(median_steps)` steps.**
 
+***
+#### Question Set 2: What is the average daily activity pattern?
+1. Make a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days(y-axis).
+2. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?.
 
+To address these questions, I first create a data table called "interval_plot" from the "activity" data table.  The data table will have two columns: the interval and the mean of the steps per interval across each day in the dataset.
 
-## What is the average daily activity pattern?
+```{r Second Question Set Prep}
+interval_plot <- activity[, mean(steps, na.rm = TRUE), by = interval]
+setnames(interval_plot, c("interval", "steps"))
+setkey(interval_plot, interval)
+str(interval_plot)
+head(interval_plot)
+```
 
+Next, I call the plot() function in data table notation to create a simple line plot of the mean number of steps versus the interval. 
 
+```{r Second Question Set_1}
+interval_plot[, plot(interval, steps, type = "l", col = "blue",
+                     main = "Mean Steps per Interval", xlab = "Interval",
+                     ylab = "Mean Number of Steps")]
+```
 
-## Imputing missing values
+Last, I find the index of the record in the "plot_interval" data table that has the maximum number of steps.  I report this record.
 
+```{r Second Question Set_2}
+find_max <- interval_plot[, which.max(steps)]
+```
 
+**Record number `r find_max` contains the maximum number of steps per interval.  This represents interval `r interval_plot[find_max, interval]` with `r as.integer(interval_plot[find_max, steps])` steps.**
 
-## Are there differences in activity patterns between weekdays and weekends?
+***
+#### Question Set 3: Imputing missing values
+1. Calculate and report the total number of missing values in the dataset.
+2. Devise a strategy for filling in all of the missing values in the dataset.
+3. Create a new dataset that is equal to the original dataset with the missing data filled in.
+4. Make a histogram of the total number of steps taken each day.
+5. Calculate and report the mean and median total number of steps taken per day. 
+
+It is a relatively simple matter to find and report the number of missing values using the is.na() function.  I also calculate and report the number of missing values as a fraction of the total dataset.
+
+```{r Third Question Set_1}
+missing <- activity[, sum(is.na(steps))]
+missing_fraction <- missing/nrow(activity)*100
+```
+
+**There are `r missing` missing values in the data set or about `r round(missing_fraction,0)` % of the total.**
+
+I can use the "interval_plot" data table I made earlier as a look-up table to fill in the missing values in the original dataset.  Recall that the "interval_plot" data table contains the mean number of steps per interval.  I will use the mean steps data in this table to replace missing values in a copy of the "activity" data table called "activity_full".
+
+Note the missing values in "activity_full".
+
+```{r Third Question Set_2-3a}
+activity_full <- activity # copy the "activity" data table
+head(activity_full)
+tail(activity_full)
+```
+
+The followng code looks after this.
+
+```{r Third Question Set_2-3b, cache = TRUE}  
+j <- match("steps", names(activity_full)) # get the column index for activity_full$steps
+
+for(i in 1:nrow(activity_full)) {
+  if (is.na(activity_full[i, steps])) {  
+    int <- activity_full[i, interval] # for missing data, get the interval
+    find_int <- interval_plot[, match(int, interval_plot$interval)] # find the interval in the interval_plot data table
+    int_steps <- interval_plot[find_int, steps] # find the mean steps for that interval
+    activity_full[i, j] <- int_steps # replace the missing data in the activity_full data table with the mean steps
+    }
+  }  
+```
+
+The activity_full data table now has all missing values populated with the mean number of steps for the corresponding interval.
+
+```{r Third Question Set_2-3c}
+head(activity_full)
+tail(activity_full)
+```
+
+I can re-use code from earlier to create the histogram and report the new mean and median by applying the code to the new "activity_full" data table.
+
+```{r Third Question Set_4-5}
+steps_per_day_full <- activity_full[, sum(steps, na.rm = TRUE), by = date]
+setnames(steps_per_day_full, c("date", "steps"))
+setkey(steps_per_day_full, date)
+
+steps_per_day_full[, hist(steps, breaks = 10, freq = TRUE,
+                     xlab="Steps per Day", main="Histogram of Steps per Day (Imputed)", 
+                     col="lightyellow", xlim = c(0, 25000))]
+
+mean_steps <- steps_per_day_full[, round(mean(steps,0))]
+
+median_steps <- steps_per_day_full[, round(median(steps,0))]
+```
+
+**The mean total steps per day for the imputed dataset is: `r as.integer(mean_steps)` steps.  The median total steps per day for the imputed dataset is: `r as.integer(median_steps)` steps.**
+
+By inspection of the histograms and the summary data before and after imputation, it is clear that the imputation process has reduced the skewness in the data.  The mean and median number of steps per day are equal following imputation.
+
+***
+#### Question Set 4: Are there differences in activity patterns between weekdays and weekends?
+1. Create a new factor variable in the dataset with two levels - "weekday" and "weekend" indicating whether a given date is a weekday or a weekend day.
+2. Make a panel plot containing a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis).
+
+First, I use the weekdays() function to set and populate a new column in "activity_full" with the name of the weekday for each record in the data table.  Then, I set and populate a new factor variable called day_type for each record that identifies the type of day - weekend or weekday.
+
+```{r Fourth Question Set_1}
+activity_full[, day:= weekdays(date)]
+activity_full[, day_type := as.factor(ifelse(day == "Saturday" | day == "Sunday", "weekend", "weekday"))]
+setkey(activity_full, date, interval)
+str(activity_full)
+```
+
+Second, I create temporary data tables for manipulating the data to make it easy to plot.  Each data table is a subset of the "activity_full" data table, subsetted by the type of day.  For each data table, I calculate the mean steps per interval for each interval.  Then I combine the data tables into a single data table called "interval_plot_full".  I remove the temporary tables.
+
+```{r Fourth Question Set_2a, cache = TRUE}
+a <- subset(activity_full, day_type == "weekend")
+interval_plot_a <- a[, mean(steps, na.rm = TRUE), by = interval]
+setnames(interval_plot_a, c("interval", "steps"))
+interval_plot_a[, day_type := "weekend"]
+  
+b <- subset(activity_full, day_type == "weekday")
+interval_plot_b <- b[, mean(steps, na.rm = TRUE), by = interval]
+setnames(interval_plot_b, c("interval", "steps"))
+interval_plot_b[, day_type := "weekday"]
+
+interval_plot_full <- rbind(interval_plot_a, interval_plot_b)
+
+rm(a, b, interval_plot_a, interval_plot_b)
+
+```
+
+Using lattice graphics, it is a simple matter to plot the 5-minute intervals and the average number of steps taken, averaged across all weekday days or weekend days.
+
+```{r Fourth Question Set_2b}
+require(lattice)
+
+xyplot( steps ~ interval | day_type, data = interval_plot_full, type = "l", col = "blue",
+        scales = list(x = list(alternating = 1), y = list(alternating = 3)),
+        layout = c(1,2),
+         main = "Mean Steps per Interval by Type of Day",
+        xlab = "Interval", ylab = "Mean number of steps"
+      )
+```
+
+There are differences in the activity patterns between weekdays and weekends.  We don't know anything about the test subject so it is difficult to draw any conclusions beyond this simple generalization.
+
+***
+
+*That concludes the assignment.  Thanks for your time!*
+
