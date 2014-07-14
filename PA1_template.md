@@ -1,9 +1,3 @@
----
-title: ""
-output: 
-  html_document
----
-
 Reproducible Research
 ----------------------
 
@@ -156,7 +150,7 @@ tail(activity_full)
 
 The followng code looks after this.
 
-```{r Third Question Set_2-3b}  
+```{r Third Question Set_2-3b, cache = TRUE}  
 j <- match("steps", names(activity_full)) # get the column index for activity_full$steps
 
 for(i in 1:nrow(activity_full)) {
