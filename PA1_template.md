@@ -1,3 +1,9 @@
+---
+title: ""
+output: 
+  html_document
+---
+
 Reproducible Research
 ----------------------
 
@@ -150,7 +156,7 @@ tail(activity_full)
 
 The followng code looks after this.
 
-```{r Third Question Set_2-3b, cache = TRUE}  
+```{r Third Question Set_2-3b}  
 j <- match("steps", names(activity_full)) # get the column index for activity_full$steps
 
 for(i in 1:nrow(activity_full)) {
@@ -236,7 +242,7 @@ xyplot( steps ~ interval | day_type, data = interval_plot_full, type = "l", col 
       )
 ```
 
-There are differences in the activity patterns between weekdays and weekends.  We don't know anything about the test subject but the activity patterns appear to be consistent with someone who works Monday through Friday and has weekends off.
+There are differences in the activity patterns between weekdays and weekends.  We don't know anything about the test subject so it is difficult to draw any conclusions beyond this simple generalization.
 
 ***
 
