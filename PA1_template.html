@@ -238,16 +238,10 @@ head(activity_full)</code></pre>
 ## 5: 2012-11-30     2350    NA
 ## 6: 2012-11-30     2355    NA</code></pre>
 <p>The followng code looks after this.</p>
-<pre class="r"><code>j &lt;- match(&quot;steps&quot;, names(activity_full)) # get the column index for activity_full$steps
-
-for(i in 1:nrow(activity_full)) {
-  if (is.na(activity_full[i, steps])) {  
-    int &lt;- activity_full[i, interval] # for missing data, get the interval
-    find_int &lt;- interval_plot[, match(int, interval_plot$interval)] # find the interval in the interval_plot data table
-    int_steps &lt;- interval_plot[find_int, steps] # find the mean steps for that interval
-    activity_full[i, j] &lt;- int_steps # replace the missing data in the activity_full data table with the mean steps
-    }
-  }  </code></pre>
+<pre class="r"><code> # find the indexes of the missing data
+missing_index &lt;- activity_full[, which(is.na(steps))]
+# replace the missing values with the mean number of steps for the interval
+activity_full &lt;- activity_full[missing_index, steps := interval_plot[, steps]] </code></pre>
 <p>The activity_full data table now has all missing values populated with the mean number of steps for the corresponding interval.</p>
 <pre class="r"><code>head(activity_full)</code></pre>
 <pre><code>##          date interval   steps
@@ -297,7 +291,6 @@ steps_per_day_full[, hist(steps, breaks = 10, freq = TRUE,
 ## attr(,&quot;class&quot;)
 ## [1] &quot;histogram&quot;</code></pre>
 <pre class="r"><code>mean_steps &lt;- steps_per_day_full[, round(mean(steps,0))]
-
 median_steps &lt;- steps_per_day_full[, round(median(steps,0))]</code></pre>
 <p><strong>The mean total steps per day for the imputed dataset is: 10766 steps. The median total steps per day for the imputed dataset is: 10766 steps.</strong></p>
 <p>By inspection of the histograms and the summary data before and after imputation, it is clear that the imputation process has reduced the skewness in the data. The mean and median number of steps per day are equal following imputation.</p>
