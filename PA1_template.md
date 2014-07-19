@@ -37,14 +37,6 @@ For my analysis, data.table is a required package.  The data is unzipped and sto
 
 ```r
 require(data.table)
-```
-
-```
-## Loading required package: data.table
-## data.table 1.9.2  For help type: help("data.table")
-```
-
-```r
 setwd("~/Documents/Coursera/5_Reproducible Research")
 activity <- fread("activity.csv", header = TRUE, stringsAsFactors = FALSE)
 ```
@@ -304,16 +296,10 @@ The followng code looks after this.
 
 
 ```r
-j <- match("steps", names(activity_full)) # get the column index for activity_full$steps
-
-for(i in 1:nrow(activity_full)) {
-  if (is.na(activity_full[i, steps])) {  
-    int <- activity_full[i, interval] # for missing data, get the interval
-    find_int <- interval_plot[, match(int, interval_plot$interval)] # find the interval in the interval_plot data table
-    int_steps <- interval_plot[find_int, steps] # find the mean steps for that interval
-    activity_full[i, j] <- int_steps # replace the missing data in the activity_full data table with the mean steps
-    }
-  }  
+ # find the indexes of the missing data
+missing_index <- activity_full[, which(is.na(steps))]
+# replace the missing values with the mean number of steps for the interval
+activity_full <- activity_full[missing_index, steps := interval_plot[, steps]] 
 ```
 
 The activity_full data table now has all missing values populated with the mean number of steps for the corresponding interval.
@@ -389,7 +375,6 @@ steps_per_day_full[, hist(steps, breaks = 10, freq = TRUE,
 
 ```r
 mean_steps <- steps_per_day_full[, round(mean(steps,0))]
-
 median_steps <- steps_per_day_full[, round(median(steps,0))]
 ```
 
@@ -517,13 +502,7 @@ Using lattice graphics, it is a simple matter to plot the 5-minute intervals and
 
 ```r
 require(lattice)
-```
 
-```
-## Loading required package: lattice
-```
-
-```r
 xyplot( steps ~ interval | day_type, data = interval_plot_full, type = "l", col = "blue",
         scales = list(x = list(alternating = 1), y = list(alternating = 3)),
         layout = c(1,2),
